@@ -451,7 +451,15 @@ class C4 {
   f64: f64;
   boolTrue: boolean;
   boolFalse: boolean;
-  nullable: i64 | null;
+  nullable: C1 | null;
+}
+
+export function test_marshal_array(): i32 {
+  let toks = allocateTokenArray(10)
+  const json = `[11,22,33]`
+  tokenize(json, toks)
+  let arr = marshal_array<i32>(json, toks, marshal_i32)
+  return check(arr[1] == 22)
 }
 
 export function test_marshal_C1(): i32 {
@@ -470,13 +478,13 @@ export function test_marshal_C2(): i32 {
   return check(o.b.a == -32) || check(o.x.length === 6)
 }
 
-// export function test_marshal_C3(): i32 {
-//   let toks = allocateTokenArray(30)  // too many but who's counting?
-//   const json = `{"c": [1,2,3], "d": [{"a": -1}, {"a": -2}]}`
-//   tokenize(json, toks)
-//   let o = marshal_C3(json, toks)
-//   return check(o.c[1] == 2) || check(o.d[1].a == -2)
-// }
+export function test_marshal_C3(): i32 {
+  let toks = allocateTokenArray(30)  // too many but who's counting?
+  const json = `{"c": [11,22,33], "d": [{"a": 44}, {"a": 55}]}`
+  tokenize(json, toks)
+  let o = marshal_C3(json, toks)
+  return check(o.c[1] == 22) || check(o.d[1].a == 55)
+}
 
 export function test_marshal_C4(): i32 {
   let toks = allocateTokenArray(30)  // too many but who's counting?
@@ -500,5 +508,6 @@ export function test_marshal_C4(): i32 {
          || check(o.u64 == 7)
          || check(o.boolTrue == true)
          || check(o.boolFalse == false)
+         // || check(o.nullable == null)
          )
 }

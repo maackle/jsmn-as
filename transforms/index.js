@@ -112,11 +112,10 @@ function marshal_array<Ty>(
   toks: Array<JsmnToken>,
   marshalChild: (json: string, toks: Array<JsmnToken>) => Ty
 ): Array<Ty> {
-  let arr = new Array<Ty>()
   let arrTok = toks.shift()
   assert(arrTok.type === JsmnType.JSMN_ARRAY)
   // TODO: check for empty array
-
+  let arr = new Array<Ty>()
   while (toks.length > 0 && toks[0].type != JsmnType.JSMN_UNDEFINED && toks[0].start < arrTok.end) {
     let v = marshalChild(json, toks)
     arr.push(v)
@@ -161,10 +160,12 @@ function marshalCallSwitch(typeName, typeArgs) {
     case 'Array':
       const targ = typeArgs[0]
       const fn = marshalCallSwitch(targ)
+      // return `((json: string, toks: Array<JsmnToken>): Array<${targ}> =>
+      //   new Array<${targ}>(3)
+      // )`
       return `((json: string, toks: Array<JsmnToken>): Array<${targ}> =>
         marshal_array<${targ}>(json, toks, ${fn})
       )`
-      // return `((json: string, toks: Array<JsmnToken>): Array<${targ}> => marshal_array<${targ}>(${fn})(json, toks) )`
     default:
       return `marshal_${typeName}`
   }
@@ -199,11 +200,11 @@ function buildMarshal(ty, struct) {
   const conditions = struct.map(([key, typeName, ...typeArgs]) => {
     const parseCall = marshalCallSwitch(typeName, typeArgs)
     const jsmnType = jsmnTypeSwitch(typeName)
+    const dbg = key === 'c' ? `debug_int( (obj.${key}.length) )` : ''
     return `(key == '${key}') {
       assert(valTok.type === ${jsmnType})
       obj.${key} = (${parseCall}(json, toks))
-      ${key == 'c' ? 'debug_int(obj.c.length)' : key == 'd' ? 'debug_int(obj.d.length)' : ''}
-      // ${key == 'c' ? 'debug_int(obj.c[2])' : key == 'd' ? 'debug_int(obj.d[0].a)' : ''}
+      ${ dbg }
     }`
   })
 
@@ -220,14 +221,15 @@ function marshal_${ty}(json: string, toks: Array<JsmnToken>): ${ty} {
 
   do {
     let keyTok: JsmnToken = toks.shift()
-    let valTok: JsmnToken = toks[0]  // maybe shift later
-    // debug_int(valTok.end)
+    let valTok: JsmnToken = toks[0]
     let key = tokenVal(json, keyTok)
     let val = tokenVal(json, valTok)
     // debug("COND: ${ty} / " + key /* + " " + keyTok.start + " " + valTok.start */)
+
     // *** begin generated conditionals ***
     ${ conditionCode }
     // ***  end generated conditionals  ***
+
   } while(toks.length > 0 && toks[0].type != JsmnType.JSMN_UNDEFINED && toks[0].start < objTok.end)
   return obj
 }
