@@ -101,70 +101,47 @@ exports.afterParse = function(parser) {
 // {"S":[["a","i32"]],"T":[["s","S"]],"Arr":[["ss","Array","S"],["t","T"]]}
 
 function builtinMarshalFuncs(structs) {
-  return `
+  const prelude = `
+@inline
+function tokenVal(json: string, tok: JsmnToken): string {
+  return json.substring(tok.start, tok.end)
+}
 
-  @inline
-  function tokenVal(json: string, tok: JsmnToken): string {
-    return json.substring(tok.start, tok.end)
+function marshal_array<Ty>(
+  json: string,
+  toks: Array<JsmnToken>,
+  marshalChild: (json: string, toks: Array<JsmnToken>) => Ty
+): Array<Ty> {
+  let arr = new Array<Ty>()
+  let arrTok = toks.shift()
+  assert(arrTok.type === JsmnType.JSMN_ARRAY)
+  // TODO: check for empty array
+
+  while (toks.length > 0 && toks[0].type != JsmnType.JSMN_UNDEFINED && toks[0].start < arrTok.end) {
+    let v = marshalChild(json, toks)
+    arr.push(v)
   }
-
-  @inline
-  function marshal_i32(json: string, toks: Array<JsmnToken>): i32 {
-    let val = tokenVal(json, toks.shift())
-    return parseI32(val, 10)
-  }
-
-  @inline
-  function marshal_i64(json: string, toks: Array<JsmnToken>): i64 {
-    let val = tokenVal(json, toks.shift())
-    return parseI64(val, 10)
-  }
-
-  @inline
-  function marshal_float(json: string, toks: Array<JsmnToken>): f64 {
-    let val = tokenVal(json, toks.shift())
-    return parseFloat(val)
-  }
-
-  @inline
-  function marshal_string(json: string, toks: Array<JsmnToken>): string {
-    let val = tokenVal(json, toks.shift())
-    return val
-  }
-
-  // function marshal_array<__T>(marshalChild: (json: string, toks: Array<JsmnToken>) => __T):
-  //   (json: string, toks: Array<JsmnToken>) => Array<__T>
-  //   {
-  //     return function(json: string, toks: Array<JsmnToken>): Array<__T> {
-  //       let arr = new Array<__T>()
-  //       let arrTok = toks.shift()
-  //       assert(arrTok.type === JsmnType.JSMN_ARRAY)
-  //       // TODO: check for empty array
-
-  //       while (toks.length > 0 && toks[0].start < arrTok.end) {
-  //         arr.push(marshalChild(json, toks))  // ***  parse
-  //       }
-  //       return arr
-  //     }
-  //   }
-
-  function marshal_array<Ty>(
-    json: string,
-    toks: Array<JsmnToken>,
-    marshalChild: (json: string, toks: Array<JsmnToken>) => Ty
-  ): Array<Ty> {
-    let arr = new Array<Ty>()
-    let arrTok = toks.shift()
-    assert(arrTok.type === JsmnType.JSMN_ARRAY)
-    // TODO: check for empty array
-
-    while (toks.length > 0 && toks[0].type != JsmnType.JSMN_UNDEFINED && toks[0].start < arrTok.end) {
-      let v = marshalChild(json, toks)
-      arr.push(v)
-    }
-    return arr
-  }
+  return arr
+}
   `
+  const primitives = ([
+    ['i32', 'parseI32(val, 10)'],
+    ['u32', 'parseI32(val, 10)'],
+    ['i64', 'parseI64(val, 10)'],
+    ['u64', 'parseI64(val, 10)'],
+    ['f32', 'parseFloat(val)'],
+    ['f64', 'parseFloat(val)'],
+    ['string', 'val'],
+    ['boolean', '(val == "true")'],
+    // ['null', '(val == "null" ? 0 : -1)'],
+  ]).map(([inType, stmt]) => `
+@inline
+function marshal_${inType}(json: string, toks: Array<JsmnToken>): ${inType} {
+  let val = tokenVal(json, toks.shift())
+  return ${stmt} as ${inType}
+}
+  `).join('\n')
+  return prelude + primitives
 }
 
 function marshalCallSwitch(typeName, typeArgs) {
@@ -176,6 +153,7 @@ function marshalCallSwitch(typeName, typeArgs) {
     case 'u64':
       return 'marshal_i64'
     case 'f32':
+      return 'marshal_f32'
     case 'f64':
       return 'marshal_f64'
     case 'string':
@@ -194,6 +172,7 @@ function marshalCallSwitch(typeName, typeArgs) {
 
 function jsmnTypeSwitch(typeName) {
   switch(typeName) {
+    case 'boolean':
     case 'i32':
     case 'u32':
     case 'i64':

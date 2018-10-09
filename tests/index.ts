@@ -441,6 +441,19 @@ class C3 {
   d: Array<C1>;
 }
 
+@deserializable
+class C4 {
+  i32: i32;
+  i64: i64;
+  u32: u32;
+  u64: u64;
+  f32: f32;
+  f64: f64;
+  boolTrue: boolean;
+  boolFalse: boolean;
+  nullable: i64 | null;
+}
+
 export function test_marshal_C1(): i32 {
   let toks = allocateTokenArray(3)
   const json = `{"a": 12345}`
@@ -457,10 +470,35 @@ export function test_marshal_C2(): i32 {
   return check(o.b.a == -32) || check(o.x.length === 6)
 }
 
-export function test_marshal_C3(): i32 {
+// export function test_marshal_C3(): i32 {
+//   let toks = allocateTokenArray(30)  // too many but who's counting?
+//   const json = `{"c": [1,2,3], "d": [{"a": -1}, {"a": -2}]}`
+//   tokenize(json, toks)
+//   let o = marshal_C3(json, toks)
+//   return check(o.c[1] == 2) || check(o.d[1].a == -2)
+// }
+
+export function test_marshal_C4(): i32 {
   let toks = allocateTokenArray(30)  // too many but who's counting?
-  const json = `{"c": [1,2,3], "d": [{"a": -1}, {"a": -2}]}`
+  const json = `{ \
+    "boolTrue": true, \
+    "boolFalse": false, \
+    "i32": 7, \
+    "i64": 7, \
+    "u32": 7, \
+    "u64": 7, \
+    "f32": 7.0, \
+    "f64": 7.0 \
+  }`
   tokenize(json, toks)
-  let o = marshal_C3(json, toks)
-  return check(o.c[1] == 2) || check(o.d[1].a == -2)
+  let o = marshal_C4(json, toks)
+  return (  check(o.f32 == 7.0)
+         || check(o.f64 == 7.0)
+         || check(o.i32 == 7)
+         || check(o.u32 == 7)
+         || check(o.i64 == 7)
+         || check(o.u64 == 7)
+         || check(o.boolTrue == true)
+         || check(o.boolFalse == false)
+         )
 }
