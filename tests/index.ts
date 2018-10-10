@@ -454,39 +454,44 @@ class C4 {
   nullable: C1 | null;
 }
 
-export function test_marshal_array(): i32 {
+@deserializable
+class C5 {
+  crazy: Array<Array<Array<C3>>>
+}
+
+export function test_unmarshal_array(): i32 {
   let toks = allocateTokenArray(10)
   const json = `[11,22,33]`
   tokenize(json, toks)
-  let arr = marshal_array<i32>(json, toks, marshal_i32)
+  let arr = unmarshal_array_i32(json, toks)
   return check(arr[1] == 22)
 }
 
-export function test_marshal_C1(): i32 {
+export function test_unmarshal_C1(): i32 {
   let toks = allocateTokenArray(3)
   const json = `{"a": 12345}`
   tokenize(json, toks)
-  let o = marshal_C1(json, toks)
+  let o = unmarshal_C1(json, toks)
   return check(o.a == 12345)
 }
 
-export function test_marshal_C2(): i32 {
+export function test_unmarshal_C2(): i32 {
   let toks = allocateTokenArray(20)  // too many but who's counting?
   const json = `{"x": "fooooo", "b": {"a": -32}}`
   tokenize(json, toks)
-  let o = marshal_C2(json, toks)
+  let o = unmarshal_C2(json, toks)
   return check(o.b.a == -32) || check(o.x.length === 6)
 }
 
-export function test_marshal_C3(): i32 {
+export function test_unmarshal_C3(): i32 {
   let toks = allocateTokenArray(30)  // too many but who's counting?
   const json = `{"c": [11,22,33], "d": [{"a": 44}, {"a": 55}]}`
   tokenize(json, toks)
-  let o = marshal_C3(json, toks)
+  let o = unmarshal_C3(json, toks)
   return check(o.c[1] == 22) || check(o.d[1].a == 55)
 }
 
-export function test_marshal_C4(): i32 {
+export function test_unmarshal_C4(): i32 {
   let toks = allocateTokenArray(30)  // too many but who's counting?
   const json = `{ \
     "boolTrue": true, \
@@ -499,7 +504,7 @@ export function test_marshal_C4(): i32 {
     "f64": 7.0 \
   }`
   tokenize(json, toks)
-  let o = marshal_C4(json, toks)
+  let o = unmarshal_C4(json, toks)
   return (  check(o.f32 == 7.0)
          || check(o.f64 == 7.0)
          || check(o.i32 == 7)
@@ -511,3 +516,29 @@ export function test_marshal_C4(): i32 {
          // || check(o.nullable == null)
          )
 }
+
+// export function test_unmarshal_C5(): i32 {
+//   let toks = allocateTokenArray(50)  // too many but who's counting?
+//   const jsonC3 = '{"c": [1], "d": [{"a": 2}, {"a": 3}]}'
+//   const json = `        \
+//     {                   \
+//       "crazy": [        \
+//         [               \
+//           [${jsonC3}],  \
+//           [${jsonC3}]   \
+//         ],              \
+//         [               \
+//           [${jsonC3}],  \
+//           [${jsonC3}]   \
+//         ]               \
+//       ]                 \
+//     }                   \
+//   `
+//   debug(json)
+//   tokenize(json, toks)
+//   let o = unmarshal_C5(json, toks)
+//   let a = o[0]
+//   let b = a[0]
+//   let c = b[0]
+//   return check(c.c[0] == 1)
+// }
